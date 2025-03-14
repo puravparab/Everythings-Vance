@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Everything's Vance</title>
+		<link rel="stylesheet" href="popup.css">
+	</head>
+	<body>
+		<div id="main-page" class="page active">
+			<div class="header">
+				<div class="title-area">
+					<img src="/assets/images/vance.png" width="25px" height="25px" alt="JD Vance" class="icon">
+					<h1>Everything's Vance</h1>
+				</div>
+				<div class="control-group">
+					<label class="switch">
+						<input type="checkbox" id="enable-toggle">
+						<span class="slider round"></span>
+					</label>
+				</div>
+			</div>
+			
+			<div class="stat-container">
+				<span id="swap-count">0</span> images swapped
+			</div>
+
+			<button id="settings-btn" class="btn">
+				Settings
+			</button>
+		</div>
+		
+		<div id="settings-page" class="page">
+			<div class="header">
+				<h1>Settings</h1>
+			</div>
+			
+			<div class="form-group">
+				<label for="api-key">API Key</label>
+				<input type="text" id="api-key" placeholder="Enter your Replicate API key">
+				<a href="https://replicate.com/account/api-tokens" target="_blank" class="api-link">Get an API key</a>
+			</div>
+			
+			<div class="form-group">
+				<label for="image-limit">Image Swap Limit</label>
+				<input type="number" id="image-limit" min="0" value="100">
+				<span class="help-text">Extension will turn off after limit</span>
+			</div>
+			
+			<button id="back-btn" class="btn">
+				Back to Main
+			</button>
+		</div>
+		
+		<script src="popup.js"></script>
+	</body>
+</html>

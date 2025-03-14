@@ -1,0 +1,188 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+@font-face {
+  font-family: 'SF Pro Text';
+  src: url('https://sf.abarba.me/SF-Pro-Text-Regular.otf');
+}
+
+body {
+  font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif;
+  width: 300px;
+  padding: 16px;
+  color: #f0f0f0;
+  background-color: #1a1a1a;
+}
+
+.page {
+  display: none;
+}
+
+.page.active {
+  display: block;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.title-area {
+  display: flex;
+  align-items: center;
+}
+
+.icon {
+  width: 25px;
+  height: 25px;
+  margin-right: 10px;
+}
+
+h1 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+	justify-content: center;
+	margin: auto;
+	margin-right: 0px;
+}
+
+.stat-container {
+  background-color: #2a2a2a;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  text-align: center;
+  font-size: 14px;
+}
+
+#swap-count {
+  font-weight: 600;
+  font-size: 16px;
+  color: #9d71ea; /* Purple accent */
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+input[type="text"],
+input[type="number"] {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  background-color: #2a2a2a;
+  color: #f0f0f0;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus {
+  border-color: #9d71ea; /* Purple accent */
+  outline: none;
+}
+
+.help-text, .api-link {
+  display: block;
+  font-size: 12px;
+  color: #a0a0a0;
+  margin-top: 5px;
+}
+
+.api-link {
+  color: #9d71ea; /* Purple accent */
+  text-decoration: none;
+}
+
+.api-link:hover {
+  text-decoration: underline;
+}
+
+.btn {
+  background-color: #9d71ea; /* Purple accent */
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn:hover {
+  background-color: #8a5fd6; /* Darker purple on hover */
+}
+
+/* Toggle Switch Styles - Smaller Version */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #3a3a3a;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #f0f0f0;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: #9d71ea; /* Purple accent */
+}
+
+input:checked + .slider:before {
+  transform: translateX(16px);
+}
+
+.slider.round {
+  border-radius: 20px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
