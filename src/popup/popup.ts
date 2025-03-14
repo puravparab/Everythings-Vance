@@ -1,105 +1,225 @@
-import { ExtensionSettings, defaultSettings } from "../types";
+import { ExtensionSettings, ExtensionData, defaultSettings, defaultData } from '../types';
 
 // DOM Elements
-const mainPage = document.getElementById('main-page') as HTMLDivElement;
-const settingsPage = document.getElementById('settings-page') as HTMLDivElement;
-const enableToggle = document.getElementById('enable-toggle') as HTMLInputElement;
-const swapCountElement = document.getElementById('swap-count') as HTMLSpanElement;
-const imageCountElement = document.getElementById('image-count') as HTMLSpanElement; // New element for image count
-const settingsBtn = document.getElementById('settings-btn') as HTMLButtonElement;
-const backBtn = document.getElementById('back-btn') as HTMLButtonElement;
-const apiKeyInput = document.getElementById('api-key') as HTMLInputElement;
-const imageLimitInput = document.getElementById('image-limit') as HTMLInputElement;
+// Main
+let mainPage: HTMLElement;
+let enableToggle: HTMLInputElement;
+let imageCountElement: HTMLElement;
+let settingsButton: HTMLButtonElement;
+// Settings
+let settingsPage: HTMLElement;
+let backButton: HTMLButtonElement;
+let apiKeyInput: HTMLInputElement;
+let imageLimitInput: HTMLInputElement;
 
-// Load settings from storage
-function loadSettings(): Promise<ExtensionSettings> {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get(defaultSettings, (result) => {
-      resolve(result as ExtensionSettings);
+let currentSettings: ExtensionSettings;
+let currentData: ExtensionData;
+let saveTimer: number | null = null; // avoid chrome rate limits
+
+// Initialize the popup
+document.addEventListener('DOMContentLoaded', async () => {
+  initializeElements(); // Initialize DOM elements
+  try {
+    await Promise.all([loadSettings(), loadData()]);
+    updateUI();
+    setupEventListeners();
+  } catch (error) {
+    console.error('Failed to initialize popup:', error);
+    showError('Failed to load settings. Please try reopening the popup.');
+  }
+});
+
+// Initialize DOM element references
+function initializeElements(): void {
+  enableToggle = document.getElementById('enable-toggle') as HTMLInputElement;
+  imageCountElement = document.getElementById('image-count') as HTMLElement;
+  settingsButton = document.getElementById('settings-btn') as HTMLButtonElement;
+  backButton = document.getElementById('back-btn') as HTMLButtonElement;
+  apiKeyInput = document.getElementById('api-key') as HTMLInputElement;
+  imageLimitInput = document.getElementById('image-limit') as HTMLInputElement;
+  mainPage = document.getElementById('main-page') as HTMLElement;
+  settingsPage = document.getElementById('settings-page') as HTMLElement;
+  
+  // Validate all elements were found
+  if (!enableToggle || !imageCountElement || !settingsButton || !backButton || 
+      !apiKeyInput || !imageLimitInput || !mainPage || !settingsPage) {
+    throw new Error('Failed to initialize UI elements');
+  }
+}
+
+// Show error message in the popup
+function showError(message: string): void {
+  const errorElement = document.createElement('div');
+  errorElement.style.color = 'red';
+  errorElement.style.padding = '10px';
+  errorElement.style.margin = '10px 0';
+  errorElement.style.backgroundColor = '#ffeeee';
+  errorElement.style.borderRadius = '5px';
+  errorElement.textContent = message;
+  document.body.prepend(errorElement);
+}
+
+// Load settings from Chrome storage
+async function loadSettings(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!chrome.storage) {
+      currentSettings = { ...defaultSettings };
+      return resolve();
+    }
+    
+    chrome.storage.local.get('settings', (result) => {
+      if (chrome.runtime.lastError) {
+        return reject(new Error(chrome.runtime.lastError.message));
+      }
+      try {
+        if (result.settings) {
+          currentSettings = result.settings;
+        } else {
+          currentSettings = { ...defaultSettings };
+          saveSettings();
+        }
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
     });
   });
 }
 
-// Save settings to storage
-function saveSettings(settings: Partial<ExtensionSettings>): Promise<void> {
-  return new Promise((resolve) => {
-    chrome.storage.sync.set(settings, () => {
-      resolve();
+// Load data from Chrome storage (read-only)
+async function loadData(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!chrome.storage) {
+      currentData = { ...defaultData };
+      return resolve();
+    }
+    
+    chrome.storage.local.get('extensionData', (result) => {
+      if (chrome.runtime.lastError) {
+        return reject(new Error(chrome.runtime.lastError.message));
+      }
+      try {
+        if (result.extensionData) {
+          currentData = result.extensionData;
+        } else {
+          currentData = { ...defaultData };
+        }
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
     });
   });
 }
 
-// Update UI with settings
-async function updateUI() {
-  const settings = await loadSettings();
+// Save settings to Chrome local storage
+function saveSettings(): void {
+  if (saveTimer !== null) {
+    window.clearTimeout(saveTimer);
+  }
+  // Debounce save operations by 300ms
+  saveTimer = window.setTimeout(() => {
+    if (!chrome.storage) return;
+    
+    chrome.storage.local.set({ settings: currentSettings }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('Failed to save settings:', chrome.runtime.lastError);
+        return;
+      }
+      // Notify the background script that settings have changed
+      if (chrome.runtime && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage({ 
+          action: 'settingsUpdated', 
+          settings: currentSettings 
+        }).catch(err => console.error('Failed to notify background script:', err));
+      }
+    });
+  }, 300);
+}
+
+// Update UI elements based on current settings and data
+function updateUI(): void {
+  // Update main page
+  enableToggle.checked = currentSettings.enabled;
+  imageCountElement.textContent = currentData.imagesSwapped.toString();
   
-  enableToggle.checked = settings.enabled;
-  swapCountElement.textContent = settings.swapCount.toString();
-  apiKeyInput.value = settings.apiKey;
-  imageLimitInput.value = settings.imageLimit.toString();
+  // Update settings page
+  apiKeyInput.value = currentSettings.apiKey;
+  imageLimitInput.value = currentSettings.imageLimit.toString();
+}
+
+// Set up event listeners
+function setupEventListeners(): void {
+  // Toggle extension on/off
+  enableToggle.addEventListener('change', () => {
+    currentSettings.enabled = enableToggle.checked;
+    saveSettings();
+  });
   
-  // Request the current image count from the background script
-  chrome.runtime.sendMessage({ action: 'getImageCount' }, (response) => {
-    if (response && response.count !== undefined) {
-      imageCountElement.textContent = response.count.toString();
+  // Settings page navigation
+  settingsButton.addEventListener('click', () => {
+    showPage('settings');
+  });
+  
+  backButton.addEventListener('click', () => {
+    // Save any pending changes before returning to main page
+    if (apiKeyInput.value.trim() !== currentSettings.apiKey) {
+      currentSettings.apiKey = apiKeyInput.value.trim();
+      saveSettings();
+    }
+    const newLimit = parseInt(imageLimitInput.value, 10);
+    if (!isNaN(newLimit) && newLimit >= 0 && newLimit !== currentSettings.imageLimit) {
+      currentSettings.imageLimit = Math.min(1000, newLimit);
+      saveSettings();
+    }
+    showPage('main');
+  });
+  
+  // Input change handlers with validation
+  apiKeyInput.addEventListener('input', () => {
+    // We'll save on blur or when returning to main page
+    apiKeyInput.classList.toggle('invalid', apiKeyInput.value.trim() === '');
+  });
+  
+  apiKeyInput.addEventListener('blur', () => {
+    currentSettings.apiKey = apiKeyInput.value.trim();
+    saveSettings();
+  });
+  
+  imageLimitInput.addEventListener('input', () => {
+    const limit = parseInt(imageLimitInput.value, 10);
+    imageLimitInput.classList.toggle('invalid', isNaN(limit) || limit < 0);
+  });
+  
+  imageLimitInput.addEventListener('blur', () => {
+    const limit = parseInt(imageLimitInput.value, 10);
+    if (!isNaN(limit) && limit >= 0) {
+      currentSettings.imageLimit = Math.min(1000, limit);
+      saveSettings();
+    } else {
+      // Reset to current value if invalid
+      imageLimitInput.value = currentSettings.imageLimit.toString();
+    }
+  });
+  
+  // Listen for data updates from content script or background
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.action === 'dataUpdated' && message.data) {
+      currentData = message.data;
+      updateUI();
     }
   });
 }
 
-// Switch between pages
-function showPage(pageId: string) {
-  mainPage.classList.remove('active');
-  settingsPage.classList.remove('active');
-  
-  if (pageId === 'main') {
+// Show specified page (main or settings)
+function showPage(page: 'main' | 'settings'): void {
+  if (page === 'main') {
     mainPage.classList.add('active');
-  } else if (pageId === 'settings') {
+    settingsPage.classList.remove('active');
+    enableToggle.focus();
+  } else {
+    mainPage.classList.remove('active');
     settingsPage.classList.add('active');
+    imageLimitInput.focus();
   }
 }
-
-// Event Listeners
-document.addEventListener('DOMContentLoaded', () => {
-  updateUI();
-  
-  // Toggle enable/disable
-  enableToggle.addEventListener('change', async () => {
-    await saveSettings({ enabled: enableToggle.checked });
-    
-    // Notify background script of the change
-    chrome.runtime.sendMessage({ 
-      action: 'toggleEnabled', 
-      enabled: enableToggle.checked 
-    });
-  });
-  
-  // Navigation between pages
-  settingsBtn.addEventListener('click', () => {
-    showPage('settings');
-  });
-  
-  backBtn.addEventListener('click', () => {
-    showPage('main');
-  });
-  
-  // Save API key
-  apiKeyInput.addEventListener('change', async () => {
-    await saveSettings({ apiKey: apiKeyInput.value });
-  });
-  
-  // Save image limit
-  imageLimitInput.addEventListener('change', async () => {
-    const limit = parseInt(imageLimitInput.value) || 100;
-    await saveSettings({ imageLimit: limit });
-  });
-});
-
-// Listen for updates from background script
-chrome.runtime.onMessage.addListener((message) => {
-  if (message.action === 'updateSwapCount') {
-    swapCountElement.textContent = message.count.toString();
-  }
-  else if (message.action === 'updateImageCount') {
-    imageCountElement.textContent = message.count.toString();
-  }
-});

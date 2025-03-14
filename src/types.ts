@@ -1,13 +1,21 @@
 export interface ExtensionSettings {
   enabled: boolean;
-  swapCount: number;
   apiKey: string;
   imageLimit: number;
 }
 
 export const defaultSettings: ExtensionSettings = {
   enabled: false,
-  swapCount: 0,
   apiKey: '',
-  imageLimit: 100
+  imageLimit: 20
+};
+
+export interface ExtensionData {
+  imagesSwapped: number;
+  imagesFound: number;
+}
+
+export const defaultData: ExtensionData = {
+  imagesSwapped: 0,
+  imagesFound: 0
 };
