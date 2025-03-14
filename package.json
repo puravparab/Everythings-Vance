@@ -6,7 +6,9 @@
   "scripts": {
     "build": "webpack --config webpack.config.js",
     "watch": "webpack --config webpack.config.js --watch",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "zip": "bestzip dist.zip dist/*",
+    "build:zip": "npm run build && npm run zip"
   },
   "keywords": [],
   "author": "",
@@ -14,6 +16,7 @@
   "type": "commonjs",
   "devDependencies": {
     "@types/chrome": "^0.0.309",
+    "bestzip": "^2.2.1",
     "copy-webpack-plugin": "^13.0.0",
     "ts-loader": "^9.5.2",
     "typescript": "^5.8.2",
