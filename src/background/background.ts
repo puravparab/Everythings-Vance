@@ -10,7 +10,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     id: "vancify",
     title: "Vancify this image",
     contexts: ["image"],
-    documentUrlPatterns: ["*://*.twitter.com/*", "*://*.x.com/*"]
+    documentUrlPatterns: ["<all_urls>"]
   });
   
   // Initialize with current settings
@@ -22,7 +22,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === "vancify" && tab?.id && info.srcUrl) {
     const settings = await loadSettings();
     if (!settings.enabled) return;
-		
+
     // Send message to content script
     chrome.tabs.sendMessage(tab.id, {
       action: "vancify",
@@ -55,7 +55,7 @@ async function propagateSettingsToTabs(settings?: ExtensionSettings) {
   
   chrome.tabs.query({}, (tabs) => {
     tabs.forEach(tab => {
-      if (tab.id && (tab.url?.includes('twitter.com') || tab.url?.includes('x.com'))) {
+      if (tab.id) {
         chrome.tabs.sendMessage(tab.id, {
           action: 'settingsUpdated',
           settings: settings

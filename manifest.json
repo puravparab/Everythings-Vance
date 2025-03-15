@@ -22,7 +22,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*.twitter.com/*", "*://*.x.com/*"],
+      "matches": ["<all_urls>"]  ,
       "js": ["content.js"]
     }
   ],
@@ -32,8 +32,6 @@
     "contextMenus"
   ],
   "host_permissions": [
-    "*://*.twitter.com/*",
-    "*://*.x.com/*",
     "https://api.replicate.com/*"
   ],
   "web_accessible_resources": [{
