@@ -1,4 +1,6 @@
-import { ExtensionSettings, ExtensionData, defaultSettings, defaultData } from './types';
+import { defaultSettings, defaultData } from './constants';
+import { ExtensionSettings, ExtensionData } from './types';
+
 
 /**
  * Load extension settings from Chrome storage

@@ -1,4 +1,5 @@
-import { ExtensionSettings, ExtensionData, defaultSettings, defaultData } from '../types';
+import { defaultSettings, defaultData } from '../constants';
+import { ExtensionSettings, ExtensionData} from '../types';
 import { loadSettings, loadData, saveSettings, broadcastSettingsUpdate } from '../utils';
 
 // DOM Elements
@@ -6,13 +7,11 @@ import { loadSettings, loadData, saveSettings, broadcastSettingsUpdate } from '.
 let mainPage: HTMLElement;
 let enableToggle: HTMLInputElement;
 let imageSwappedElement: HTMLElement;
-let imageCountElement: HTMLElement;
 let settingsButton: HTMLButtonElement;
 // Settings
 let settingsPage: HTMLElement;
 let backButton: HTMLButtonElement;
 let apiKeyInput: HTMLInputElement;
-let imageLimitInput: HTMLInputElement;
 
 let currentSettings: ExtensionSettings;
 let currentData: ExtensionData;
@@ -37,17 +36,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 function initializeElements(): void {
   enableToggle = document.getElementById('enable-toggle') as HTMLInputElement;
 	imageSwappedElement = document.getElementById('image-swapped') as HTMLElement;
-  imageCountElement = document.getElementById('image-count') as HTMLElement;
   settingsButton = document.getElementById('settings-btn') as HTMLButtonElement;
   backButton = document.getElementById('back-btn') as HTMLButtonElement;
   apiKeyInput = document.getElementById('api-key') as HTMLInputElement;
-  imageLimitInput = document.getElementById('image-limit') as HTMLInputElement;
   mainPage = document.getElementById('main-page') as HTMLElement;
   settingsPage = document.getElementById('settings-page') as HTMLElement;
   
   // Validate all elements were found
-  if (!enableToggle || !imageSwappedElement || !imageCountElement || !settingsButton || !backButton || 
-      !apiKeyInput || !imageLimitInput || !mainPage || !settingsPage) {
+  if (!enableToggle || !imageSwappedElement || !settingsButton || !backButton || 
+      !apiKeyInput || !mainPage || !settingsPage) {
     throw new Error('Failed to initialize UI elements');
   }
 }
@@ -87,11 +84,8 @@ function updateUI(): void {
   // Update main page
   enableToggle.checked = currentSettings.enabled;
 	imageSwappedElement.textContent = currentData.imagesSwapped.toString();
-  imageCountElement.textContent = currentData.imagesFound.toString();
-  
   // Update settings page
   apiKeyInput.value = currentSettings.apiKey;
-  imageLimitInput.value = currentSettings.imageLimit.toString();
 }
 
 // Set up event listeners
@@ -113,11 +107,6 @@ function setupEventListeners(): void {
       currentSettings.apiKey = apiKeyInput.value.trim();
       debouncedSaveSettings();
     }
-    const newLimit = parseInt(imageLimitInput.value, 10);
-    if (!isNaN(newLimit) && newLimit >= 0 && newLimit !== currentSettings.imageLimit) {
-      currentSettings.imageLimit = Math.min(1000, newLimit);
-      debouncedSaveSettings();
-    }
     showPage('main');
   });
   
@@ -130,22 +119,6 @@ function setupEventListeners(): void {
   apiKeyInput.addEventListener('blur', () => {
     currentSettings.apiKey = apiKeyInput.value.trim();
     debouncedSaveSettings();
-  });
-  
-  imageLimitInput.addEventListener('input', () => {
-    const limit = parseInt(imageLimitInput.value, 10);
-    imageLimitInput.classList.toggle('invalid', isNaN(limit) || limit < 0);
-  });
-  
-  imageLimitInput.addEventListener('blur', () => {
-    const limit = parseInt(imageLimitInput.value, 10);
-    if (!isNaN(limit) && limit >= 0) {
-      currentSettings.imageLimit = Math.min(1000, limit);
-      debouncedSaveSettings();
-    } else {
-      // Reset to current value if invalid
-      imageLimitInput.value = currentSettings.imageLimit.toString();
-    }
   });
   
   // Listen for data updates from content script or background
@@ -166,6 +139,6 @@ function showPage(page: 'main' | 'settings'): void {
   } else {
     mainPage.classList.remove('active');
     settingsPage.classList.add('active');
-    imageLimitInput.focus();
+    apiKeyInput.focus();
   }
 }

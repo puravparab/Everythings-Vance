@@ -1,3 +1,4 @@
+import { processImageSwap } from './api';
 import { ExtensionSettings, ExtensionData, Image } from '../types';
 import { loadSettings, loadData, saveData, broadcastDataUpdate } from '../utils';
 
@@ -5,8 +6,17 @@ import { loadSettings, loadData, saveData, broadcastDataUpdate } from '../utils'
 chrome.runtime.onInstalled.addListener(async () => {
   try {
     console.log('Extension installed or updated');
-    await loadSettings();
+    const settings = await loadSettings();
     await loadData();
+    
+    // Create context menu item
+    chrome.contextMenus.create({
+      id: 'vanceImageOption',
+      title: "Everything's Vance",
+      contexts: ['image'],
+      enabled: settings.enabled
+    });
+    
   } catch (error) {
     console.error('Error initializing extension:', error);
   }
@@ -24,68 +34,45 @@ function notifyContentScript(tabId: number, action: string): void {
 
 // Broadcast settings to all Twitter/X tabs
 function broadcastSettingsToTabs(settings: ExtensionSettings): void {
+  // Update context menu based on enabled state
+  chrome.contextMenus.update('vanceImageOption', {
+    enabled: settings.enabled
+  });
+
   chrome.tabs.query({ url: ['*://*.twitter.com/*', '*://*.x.com/*'] }, (tabs) => {
     tabs.forEach(tab => {
       if (tab.id) {
         chrome.tabs.sendMessage(tab.id, {
           action: 'settingsUpdated',
           settings: settings
-        }).catch(err => console.error('Failed to send settings to tab:', err));
+        }).catch(err => {
+          if (!err.message.includes("Receiving end does not exist")) {
+            console.error('Failed to send settings to tab:', err);
+          }
+        });
       }
     });
   });
 }
 
-/**
- * Process newly found images from a content script
- */
-async function handleImagesFound(newImages: Image[], tabId?: number): Promise<void> {
-  if (!newImages || newImages.length === 0) return;
-  
-  try {
-    const data = await loadData();  // Get current extension data
-    const settings = await loadSettings(); // Load settings to check image limit
-
-    // Check if we've already hit the limit
-    if (data.processedImages.length >= settings.imageLimit) {
-      console.log(`Image limit (${settings.imageLimit}) reached. Skipping new images.`);
-      return;
+// Context menu click handler
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === 'vanceImageOption' && info.srcUrl) {
+    console.log('Image URL:', info.srcUrl);
+    
+    // Send message to content script to log URL
+    if (tab?.id) {
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'logImageUrl',
+        imageUrl: info.srcUrl
+      }).catch(err => console.error('Failed to send message to content script:', err));
     }
-    
-    // Create a set of existing image URLs for quick lookup
-    const existingImageUrls = new Set(
-      data.processedImages.map(img => img.imageUrl)
-    );
-    
-    // Filter out images we've already processed
-    const uniqueNewImages = newImages.filter(img => !existingImageUrls.has(img.imageUrl));
-    if (uniqueNewImages.length === 0) return;
-    
-    // Calculate how many images we can still add
-    const remainingSlots = settings.imageLimit - data.processedImages.length;
-    const imagesToAdd = uniqueNewImages.slice(0, remainingSlots); // Only add up to the limit
-    
-    // Update data
-    data.imagesFound += imagesToAdd.length;
-    data.processedImages = [...data.processedImages, ...imagesToAdd];
-    await saveData(data);
-
-    // Broadcast update to all contexts (popup and content scripts)
-    broadcastDataUpdate(data);
-    
-  } catch (error) {
-    console.error('Error handling new images:', error);
   }
-}
+});
 
 // Message handlers organized by action type
 const messageHandlers: Record<string, (message: any, sender: chrome.runtime.MessageSender) => void> = {
-  'imagesFound': (message, sender) => handleImagesFound(message.images, sender.tab?.id),
   'settingsUpdated': (message) => broadcastSettingsToTabs(message.settings),
-  'swapImage': (message, sender) => {
-    // TODO
-    console.log('Image swap requested:', message.imageUrl);
-  }
 };
 
 // Central message listener
@@ -96,8 +83,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else {
     console.warn('Unknown message action:', message.action);
   }
-  // Allow async response
-  return true;
+  return true; // Allow async response
 });
 
 // Tab event handlers using shared helper functions
