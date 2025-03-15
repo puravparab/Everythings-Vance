@@ -1,4 +1,3 @@
-import { ExtensionSettings } from '../types';
 import { loadSettings } from '../utils';
 
 let extensionEnabled = false;
@@ -9,12 +8,13 @@ async function initialize() {
     const settings = await loadSettings();
     extensionEnabled = settings.enabled;
     
-    // Listen for settings updates and other messages
     chrome.runtime.onMessage.addListener((message) => {
+			// Listen for settings updates
       if (message.action === 'settingsUpdated' && message.settings) {
         extensionEnabled = message.settings.enabled;
-      } else if (message.action === 'logImageUrl' && message.imageUrl) {
-        // Log the image URL to the console when requested
+      } 
+			// Listen for image url
+			else if (message.action === 'logImageUrl' && message.imageUrl) {
         console.log('Image URL:', message.imageUrl);
       }
       return true;

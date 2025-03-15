@@ -1,22 +1,18 @@
-import { processImageSwap } from './api';
-import { ExtensionSettings, ExtensionData, Image } from '../types';
-import { loadSettings, loadData, saveData, broadcastDataUpdate } from '../utils';
+import { ExtensionSettings } from '../types';
+import { loadSettings } from '../utils';
 
 // Initialize settings when the extension is installed or updated
 chrome.runtime.onInstalled.addListener(async () => {
   try {
     console.log('Extension installed or updated');
     const settings = await loadSettings();
-    await loadData();
-    
     // Create context menu item
     chrome.contextMenus.create({
       id: 'vanceImageOption',
-      title: "Everything's Vance",
+      title: "Vancify",
       contexts: ['image'],
       enabled: settings.enabled
     });
-    
   } catch (error) {
     console.error('Error initializing extension:', error);
   }
