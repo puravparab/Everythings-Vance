@@ -1,4 +1,5 @@
 import { ExtensionSettings, ExtensionData, defaultSettings, defaultData } from '../types';
+import { loadSettings, loadData, saveSettings, broadcastSettingsUpdate } from '../utils';
 
 // DOM Elements
 // Main
@@ -20,7 +21,9 @@ let saveTimer: number | null = null; // avoid chrome rate limits
 document.addEventListener('DOMContentLoaded', async () => {
   initializeElements(); // Initialize DOM elements
   try {
-    await Promise.all([loadSettings(), loadData()]);
+    // Load settings and data using util functions
+    currentSettings = await loadSettings();
+    currentData = await loadData();
     updateUI();
     setupEventListeners();
   } catch (error) {
@@ -59,81 +62,21 @@ function showError(message: string): void {
   document.body.prepend(errorElement);
 }
 
-// Load settings from Chrome storage
-async function loadSettings(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (!chrome.storage) {
-      currentSettings = { ...defaultSettings };
-      return resolve();
-    }
-    
-    chrome.storage.local.get('settings', (result) => {
-      if (chrome.runtime.lastError) {
-        return reject(new Error(chrome.runtime.lastError.message));
-      }
-      try {
-        if (result.settings) {
-          currentSettings = result.settings;
-        } else {
-          currentSettings = { ...defaultSettings };
-          saveSettings();
-        }
-        resolve();
-      } catch (error) {
-        reject(error);
-      }
-    });
-  });
-}
-
-// Load data from Chrome storage (read-only)
-async function loadData(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (!chrome.storage) {
-      currentData = { ...defaultData };
-      return resolve();
-    }
-    
-    chrome.storage.local.get('extensionData', (result) => {
-      if (chrome.runtime.lastError) {
-        return reject(new Error(chrome.runtime.lastError.message));
-      }
-      try {
-        if (result.extensionData) {
-          currentData = result.extensionData;
-        } else {
-          currentData = { ...defaultData };
-        }
-        resolve();
-      } catch (error) {
-        reject(error);
-      }
-    });
-  });
-}
-
-// Save settings to Chrome local storage
-function saveSettings(): void {
+// Debounced settings save function
+function debouncedSaveSettings(): void {
   if (saveTimer !== null) {
     window.clearTimeout(saveTimer);
   }
   // Debounce save operations by 300ms
-  saveTimer = window.setTimeout(() => {
-    if (!chrome.storage) return;
-    
-    chrome.storage.local.set({ settings: currentSettings }, () => {
-      if (chrome.runtime.lastError) {
-        console.error('Failed to save settings:', chrome.runtime.lastError);
-        return;
-      }
-      // Notify the background script that settings have changed
-      if (chrome.runtime && chrome.runtime.sendMessage) {
-        chrome.runtime.sendMessage({ 
-          action: 'settingsUpdated', 
-          settings: currentSettings 
-        }).catch(err => console.error('Failed to notify background script:', err));
-      }
-    });
+  saveTimer = window.setTimeout(async () => {
+    try {
+      await saveSettings(currentSettings);
+      // Broadcast the settings update to other contexts
+      broadcastSettingsUpdate(currentSettings);
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      showError('Failed to save settings. Please try again.');
+    }
   }, 300);
 }
 
@@ -141,7 +84,7 @@ function saveSettings(): void {
 function updateUI(): void {
   // Update main page
   enableToggle.checked = currentSettings.enabled;
-  imageCountElement.textContent = currentData.imagesSwapped.toString();
+  imageCountElement.textContent = currentData.imagesFound.toString();
   
   // Update settings page
   apiKeyInput.value = currentSettings.apiKey;
@@ -153,7 +96,7 @@ function setupEventListeners(): void {
   // Toggle extension on/off
   enableToggle.addEventListener('change', () => {
     currentSettings.enabled = enableToggle.checked;
-    saveSettings();
+    debouncedSaveSettings();
   });
   
   // Settings page navigation
@@ -165,12 +108,12 @@ function setupEventListeners(): void {
     // Save any pending changes before returning to main page
     if (apiKeyInput.value.trim() !== currentSettings.apiKey) {
       currentSettings.apiKey = apiKeyInput.value.trim();
-      saveSettings();
+      debouncedSaveSettings();
     }
     const newLimit = parseInt(imageLimitInput.value, 10);
     if (!isNaN(newLimit) && newLimit >= 0 && newLimit !== currentSettings.imageLimit) {
       currentSettings.imageLimit = Math.min(1000, newLimit);
-      saveSettings();
+      debouncedSaveSettings();
     }
     showPage('main');
   });
@@ -183,7 +126,7 @@ function setupEventListeners(): void {
   
   apiKeyInput.addEventListener('blur', () => {
     currentSettings.apiKey = apiKeyInput.value.trim();
-    saveSettings();
+    debouncedSaveSettings();
   });
   
   imageLimitInput.addEventListener('input', () => {
@@ -195,7 +138,7 @@ function setupEventListeners(): void {
     const limit = parseInt(imageLimitInput.value, 10);
     if (!isNaN(limit) && limit >= 0) {
       currentSettings.imageLimit = Math.min(1000, limit);
-      saveSettings();
+      debouncedSaveSettings();
     } else {
       // Reset to current value if invalid
       imageLimitInput.value = currentSettings.imageLimit.toString();

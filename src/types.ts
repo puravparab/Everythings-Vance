@@ -13,9 +13,19 @@ export const defaultSettings: ExtensionSettings = {
 export interface ExtensionData {
   imagesSwapped: number;
   imagesFound: number;
+	processedImages: Image[];
 }
 
 export const defaultData: ExtensionData = {
   imagesSwapped: 0,
-  imagesFound: 0
+  imagesFound: 0,
+	processedImages: []
+
 };
+
+export interface Image {
+  imageUrl: string;
+  width: number;
+  height: number;
+  swapUrl: string;
+}
