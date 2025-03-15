@@ -5,6 +5,7 @@ import { loadSettings, loadData, saveSettings, broadcastSettingsUpdate } from '.
 // Main
 let mainPage: HTMLElement;
 let enableToggle: HTMLInputElement;
+let imageSwappedElement: HTMLElement;
 let imageCountElement: HTMLElement;
 let settingsButton: HTMLButtonElement;
 // Settings
@@ -35,6 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Initialize DOM element references
 function initializeElements(): void {
   enableToggle = document.getElementById('enable-toggle') as HTMLInputElement;
+	imageSwappedElement = document.getElementById('image-swapped') as HTMLElement;
   imageCountElement = document.getElementById('image-count') as HTMLElement;
   settingsButton = document.getElementById('settings-btn') as HTMLButtonElement;
   backButton = document.getElementById('back-btn') as HTMLButtonElement;
@@ -44,7 +46,7 @@ function initializeElements(): void {
   settingsPage = document.getElementById('settings-page') as HTMLElement;
   
   // Validate all elements were found
-  if (!enableToggle || !imageCountElement || !settingsButton || !backButton || 
+  if (!enableToggle || !imageSwappedElement || !imageCountElement || !settingsButton || !backButton || 
       !apiKeyInput || !imageLimitInput || !mainPage || !settingsPage) {
     throw new Error('Failed to initialize UI elements');
   }
@@ -84,6 +86,7 @@ function debouncedSaveSettings(): void {
 function updateUI(): void {
   // Update main page
   enableToggle.checked = currentSettings.enabled;
+	imageSwappedElement.textContent = currentData.imagesSwapped.toString();
   imageCountElement.textContent = currentData.imagesFound.toString();
   
   // Update settings page

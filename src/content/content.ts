@@ -1,4 +1,4 @@
-import { ExtensionSettings, Image } from '..//types';
+import { ExtensionSettings, Image } from '../types';
 import { loadSettings } from '../utils';
 
 // State variables

@@ -12,32 +12,29 @@ chrome.runtime.onInstalled.addListener(async () => {
   }
 });
 
-// Listen for messages from content scripts or popup
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // Handle messages from content scripts about new images found
-  if (message.action === 'imagesFound') {
-    console.log('Images found:', message.images.length);
-    handleImagesFound(message.images, sender.tab?.id);
-  }
-  
-  // If settings are updated from popup
-  if (message.action === 'settingsUpdated') {
-    // Forward settings to all tabs with content scripts
-    chrome.tabs.query({ url: ['*://*.twitter.com/*', '*://*.x.com/*'] }, (tabs) => {
-      tabs.forEach(tab => {
-        if (tab.id) {
-          chrome.tabs.sendMessage(tab.id, {
-            action: 'settingsUpdated',
-            settings: message.settings
-          }).catch(err => console.error('Failed to send settings to tab:', err));
-        }
-      });
+// Helper functions for tab operations
+function isTwitterOrX(url: string | undefined): boolean {
+  return Boolean(url && (url.includes('twitter.com') || url.includes('x.com')));
+}
+
+function notifyContentScript(tabId: number, action: string): void {
+  chrome.tabs.sendMessage(tabId, { action })
+    .catch(() => {/* Ignore errors if content script isn't loaded yet */});
+}
+
+// Broadcast settings to all Twitter/X tabs
+function broadcastSettingsToTabs(settings: ExtensionSettings): void {
+  chrome.tabs.query({ url: ['*://*.twitter.com/*', '*://*.x.com/*'] }, (tabs) => {
+    tabs.forEach(tab => {
+      if (tab.id) {
+        chrome.tabs.sendMessage(tab.id, {
+          action: 'settingsUpdated',
+          settings: settings
+        }).catch(err => console.error('Failed to send settings to tab:', err));
+      }
     });
-  }
-  
-  // Allow async response
-  return true;
-});
+  });
+}
 
 /**
  * Process newly found images from a content script
@@ -48,6 +45,7 @@ async function handleImagesFound(newImages: Image[], tabId?: number): Promise<vo
   try {
     const data = await loadData();  // Get current extension data
     const settings = await loadSettings(); // Load settings to check image limit
+
     // Check if we've already hit the limit
     if (data.processedImages.length >= settings.imageLimit) {
       console.log(`Image limit (${settings.imageLimit}) reached. Skipping new images.`);
@@ -79,22 +77,40 @@ async function handleImagesFound(newImages: Image[], tabId?: number): Promise<vo
     console.error('Error handling new images:', error);
   }
 }
-// Activate the extension when a Twitter/X tab is selected
+
+// Message handlers organized by action type
+const messageHandlers: Record<string, (message: any, sender: chrome.runtime.MessageSender) => void> = {
+  'imagesFound': (message, sender) => handleImagesFound(message.images, sender.tab?.id),
+  'settingsUpdated': (message) => broadcastSettingsToTabs(message.settings),
+  'swapImage': (message, sender) => {
+    // TODO
+    console.log('Image swap requested:', message.imageUrl);
+  }
+};
+
+// Central message listener
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  const handler = messageHandlers[message.action];
+  if (handler) {
+    handler(message, sender);
+  } else {
+    console.warn('Unknown message action:', message.action);
+  }
+  // Allow async response
+  return true;
+});
+
+// Tab event handlers using shared helper functions
 chrome.tabs.onActivated.addListener((activeInfo) => {
   chrome.tabs.get(activeInfo.tabId, (tab) => {
-    if (!tab.url) return;
-    const isX = tab.url.includes('twitter.com') || tab.url.includes('x.com');
-    if (isX) {
-      chrome.tabs.sendMessage(activeInfo.tabId, { action: 'tabActivated' })
-        .catch(() => {/* Ignore errors if content script isn't loaded yet */});
+    if (isTwitterOrX(tab.url)) {
+      notifyContentScript(activeInfo.tabId, 'tabActivated');
     }
   });
 });
 
-// Listen for tab updates (URL changes)
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === 'complete' && tab.url && (tab.url.includes('twitter.com') || tab.url.includes('x.com'))) {
-    chrome.tabs.sendMessage(tabId, { action: 'tabUpdated' })
-      .catch(() => {/* Ignore errors if content script isn't loaded yet */});
+  if (changeInfo.status === 'complete' && isTwitterOrX(tab.url)) {
+    notifyContentScript(tabId, 'tabUpdated');
   }
 });
