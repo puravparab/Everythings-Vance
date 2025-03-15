@@ -1,98 +1,66 @@
+import { loadSettings, saveSettings } from '../utils';
 import { ExtensionSettings } from '../types';
-import { loadSettings } from '../utils';
 
-// Initialize settings when the extension is installed or updated
+// Initialize context menu
 chrome.runtime.onInstalled.addListener(async () => {
-  try {
-    console.log('Extension installed or updated');
+  console.log("Extension installed");
+  
+  // Create context menu item
+  chrome.contextMenus.create({
+    id: "vancify",
+    title: "Vancify this image",
+    contexts: ["image"],
+    documentUrlPatterns: ["*://*.twitter.com/*", "*://*.x.com/*"]
+  });
+  
+  // Initialize with current settings
+  await updateContextMenuState();
+});
+
+// Context menu click handler
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId === "vancify" && tab?.id && info.srcUrl) {
     const settings = await loadSettings();
-    // Create context menu item
-    chrome.contextMenus.create({
-      id: 'vanceImageOption',
-      title: "Vancify",
-      contexts: ['image'],
-      enabled: settings.enabled
+    if (!settings.enabled) return;
+		
+    // Send message to content script
+    chrome.tabs.sendMessage(tab.id, {
+      action: "vancify",
+      imageUrl: info.srcUrl
     });
-  } catch (error) {
-    console.error('Error initializing extension:', error);
   }
 });
 
-// Helper functions for tab operations
-function isTwitterOrX(url: string | undefined): boolean {
-  return Boolean(url && (url.includes('twitter.com') || url.includes('x.com')));
-}
+// Listen for settings changes
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.action === 'settingsUpdated') {
+    updateContextMenuState();
+    propagateSettingsToTabs(message.settings);
+  }
+});
 
-function notifyContentScript(tabId: number, action: string): void {
-  chrome.tabs.sendMessage(tabId, { action })
-    .catch(() => {/* Ignore errors if content script isn't loaded yet */});
-}
-
-// Broadcast settings to all Twitter/X tabs
-function broadcastSettingsToTabs(settings: ExtensionSettings): void {
-  // Update context menu based on enabled state
-  chrome.contextMenus.update('vanceImageOption', {
+// Update context menu based on enabled state
+async function updateContextMenuState() {
+  const settings = await loadSettings();
+  chrome.contextMenus.update("vancify", {
     enabled: settings.enabled
   });
+}
 
-  chrome.tabs.query({ url: ['*://*.twitter.com/*', '*://*.x.com/*'] }, (tabs) => {
+// Propagate settings to all tabs
+async function propagateSettingsToTabs(settings?: ExtensionSettings) {
+  if (!settings) {
+    settings = await loadSettings();
+  }
+  
+  chrome.tabs.query({}, (tabs) => {
     tabs.forEach(tab => {
-      if (tab.id) {
+      if (tab.id && (tab.url?.includes('twitter.com') || tab.url?.includes('x.com'))) {
         chrome.tabs.sendMessage(tab.id, {
           action: 'settingsUpdated',
           settings: settings
-        }).catch(err => {
-          if (!err.message.includes("Receiving end does not exist")) {
-            console.error('Failed to send settings to tab:', err);
-          }
-        });
+        }).catch(err => console.log(`Could not send to tab ${tab.id}:`, err));
       }
     });
   });
 }
-
-// Context menu click handler
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === 'vanceImageOption' && info.srcUrl) {
-    console.log('Image URL:', info.srcUrl);
-    
-    // Send message to content script to log URL
-    if (tab?.id) {
-      chrome.tabs.sendMessage(tab.id, {
-        action: 'logImageUrl',
-        imageUrl: info.srcUrl
-      }).catch(err => console.error('Failed to send message to content script:', err));
-    }
-  }
-});
-
-// Message handlers organized by action type
-const messageHandlers: Record<string, (message: any, sender: chrome.runtime.MessageSender) => void> = {
-  'settingsUpdated': (message) => broadcastSettingsToTabs(message.settings),
-};
-
-// Central message listener
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  const handler = messageHandlers[message.action];
-  if (handler) {
-    handler(message, sender);
-  } else {
-    console.warn('Unknown message action:', message.action);
-  }
-  return true; // Allow async response
-});
-
-// Tab event handlers using shared helper functions
-chrome.tabs.onActivated.addListener((activeInfo) => {
-  chrome.tabs.get(activeInfo.tabId, (tab) => {
-    if (isTwitterOrX(tab.url)) {
-      notifyContentScript(activeInfo.tabId, 'tabActivated');
-    }
-  });
-});
-
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === 'complete' && isTwitterOrX(tab.url)) {
-    notifyContentScript(tabId, 'tabUpdated');
-  }
-});

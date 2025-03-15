@@ -35,5 +35,9 @@
     "*://*.twitter.com/*",
     "*://*.x.com/*",
     "https://api.replicate.com/*"
-  ]
+  ],
+  "web_accessible_resources": [{
+    "resources": ["assets/images/*"],
+    "matches": ["<all_urls>"]
+  }]
 }

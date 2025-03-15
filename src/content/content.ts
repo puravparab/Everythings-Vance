@@ -1,32 +1,29 @@
+import { ExtensionSettings } from '../types';
 import { loadSettings } from '../utils';
 
-let extensionEnabled = false;
+let currentSettings: ExtensionSettings;
 
-// Initialize when content script loads
-async function initialize() {
-  try {
-    const settings = await loadSettings();
-    extensionEnabled = settings.enabled;
-    
-    chrome.runtime.onMessage.addListener((message) => {
-			// Listen for settings updates
-      if (message.action === 'settingsUpdated' && message.settings) {
-        extensionEnabled = message.settings.enabled;
-      } 
-			// Listen for image url
-			else if (message.action === 'logImageUrl' && message.imageUrl) {
-        console.log('Image URL:', message.imageUrl);
-      }
-      return true;
-    });
-  } catch (error) {
-    console.error('Failed to initialize content script:', error);
+// Initialize settings
+(async function initialize() {
+  currentSettings = await loadSettings();
+})();
+
+// Listen for messages from background script
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Handle settings updates
+  if (message.action === 'settingsUpdated') {
+    currentSettings = message.settings;
+    return;
   }
-}
-
-// Initialize content script
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initialize);
-} else {
-  initialize();
-}
+  
+  // Handle vancify action
+  if (message.action === "vancify" && message.imageUrl && currentSettings.enabled) {
+    const imageElements = document.querySelectorAll('img');
+    for (const img of imageElements) {
+      if (img.src === message.imageUrl) {
+        console.log("Found image element:", img);
+        break;
+      }
+    }
+  }
+});
