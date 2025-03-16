@@ -4,7 +4,7 @@ Everythings Vance is a browser extension that swaps the face of VP Vance onto an
 
 ## Requirements
 
-- [Replicate API Key](https://replicate.com/) - Required for the face-swap functionality
+- [Replicate API Key](https://replicate.com/account/api-tokens) - Required for the face-swapping
 
 ### Installation
 
@@ -29,6 +29,6 @@ Everythings Vance is a browser extension that swaps the face of VP Vance onto an
 - Enable "Developer mode" in the top-right
 - Click "Load unpacked" and select the `dist` directory
 
-5. Open the popup and add your Replicate API key
+5. Open the popup and add your [Replicate API key](https://replicate.com/account/api-tokens)
 
 6. Right click on any image, click `Vancify this image` and wait for the swap!
