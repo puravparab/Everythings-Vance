@@ -31,4 +31,4 @@ Everythings Vance is a browser extension that swaps the face of VP Vance onto an
 
 5. Open the popup and add your Replicate API key
 
-6. Right click on any image, click Vancify and wait for the swap!
+6. Right click on any image, click `Vancify this image` and wait for the swap!

@@ -18,24 +18,34 @@ chrome.runtime.onInstalled.addListener(async () => {
   await updateContextMenuState();
 });
 
-// Context menu click handler
+// When user right clicks on an image and selects "vancify this image"
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === "vancify" && tab?.id && info.srcUrl) {
     const settings = await loadSettings();
     if (!settings.enabled) return;
 
-		try{
-			const swapSource = await imageUrlToBase64(chrome.runtime.getURL('assets/images/vance2.jpg'));
-			const swappedImageUrl = await swapFace(swapSource, info.srcUrl, settings.apiKey);
+    // Loading state
+    chrome.tabs.sendMessage(tab.id, {
+      action: "startLoading",
+      imageUrl: info.srcUrl
+    });
 
-			// Send message to content script
-			chrome.tabs.sendMessage(tab.id, {
-				action: "vancify",
-				imageUrl: info.srcUrl,
-				swapURL: swappedImageUrl
-			});
-		} catch (error) {
+    try{
+      const swapSource = await imageUrlToBase64(chrome.runtime.getURL('assets/images/vance2.jpg'));
+      const swappedImageUrl = await swapFace(swapSource, info.srcUrl, settings.apiKey);
+
+      // Swap image
+      chrome.tabs.sendMessage(tab.id, {
+        action: "vancify",
+        imageUrl: info.srcUrl,
+        swapURL: swappedImageUrl
+      });
+    } catch (error) {
       console.error("Face swap failed:", error);
+      chrome.tabs.sendMessage(tab.id, {
+        action: "loadingFailed",
+        imageUrl: info.srcUrl
+      });
     }
   }
 });

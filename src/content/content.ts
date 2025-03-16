@@ -16,13 +16,93 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return;
   }
   
-  // Handle vancify action
-  if (message.action === "vancify" && message.imageUrl && currentSettings.enabled) {
-    console.log("Vancifying image:", message.imageUrl);
-    
+  // Handle loading state
+  if (message.action === "startLoading" && message.imageUrl && currentSettings.enabled) {
     // Find the image element
     const images: NodeListOf<HTMLImageElement> = document.querySelectorAll('img');
     
+    for (const img of images) {
+      if (img.src === message.imageUrl) {
+        try {
+          const container = img.parentElement as HTMLElement;
+          if (!container) continue;
+          
+          // Ensure container has relative positioning
+          const containerStyle = window.getComputedStyle(container);
+          if (containerStyle.position === 'static') {
+            container.style.position = 'relative';
+          }
+          
+          // Create loading overlay
+          const loadingOverlay = document.createElement('div');
+          loadingOverlay.className = 'vance-loading-overlay';
+          loadingOverlay.style.position = 'absolute';
+          loadingOverlay.style.top = '0';
+          loadingOverlay.style.left = '0';
+          loadingOverlay.style.width = '100%';
+          loadingOverlay.style.height = '100%';
+          loadingOverlay.style.display = 'flex';
+          loadingOverlay.style.flexDirection = 'column';
+          loadingOverlay.style.justifyContent = 'center';
+          loadingOverlay.style.alignItems = 'center';
+          loadingOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+          loadingOverlay.style.color = 'white';
+          loadingOverlay.style.zIndex = '10000';
+          
+          // Add loading text
+          const loadingText = document.createElement('div');
+          loadingText.innerText = 'Vancifying...';
+          loadingText.style.fontSize = '18px';
+          loadingText.style.fontWeight = 'bold';
+          loadingText.style.margin = '10px';
+          
+          // Add a simple spinner
+          const spinner = document.createElement('div');
+          spinner.className = 'vance-spinner';
+          spinner.style.width = '30px';
+          spinner.style.height = '30px';
+          spinner.style.border = '3px solid rgba(255, 255, 255, 0.3)';
+          spinner.style.borderRadius = '50%';
+          spinner.style.borderTop = '3px solid white';
+          spinner.style.animation = 'vance-spin 1s linear infinite';
+          
+          // Add keyframes for spinner animation
+          const style = document.createElement('style');
+          style.textContent = `
+            @keyframes vance-spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `;
+          document.head.appendChild(style);
+          
+          // Append elements to overlay
+          loadingOverlay.appendChild(spinner);
+          loadingOverlay.appendChild(loadingText);
+          
+          // Add overlay to container while preserving the original image
+          container.appendChild(loadingOverlay);
+        } catch (error) {
+          console.error("Error adding loading state:", error);
+        }
+        return;
+      }
+    }
+  }
+  
+  // Handle loading failure
+  if (message.action === "loadingFailed" && message.imageUrl) {
+    // Find and remove loading overlay
+    const overlays = document.querySelectorAll('.vance-loading-overlay');
+    overlays.forEach(overlay => overlay.remove());
+    
+    return;
+  }
+  
+  // Handle vancify action
+  if (message.action === "vancify" && message.imageUrl && currentSettings.enabled) {
+    // Find the image element
+    const images: NodeListOf<HTMLImageElement> = document.querySelectorAll('img');
     for (const img of images) {
       if (img.src === message.imageUrl) {
         try {
@@ -31,6 +111,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             const containerStyle = window.getComputedStyle(container);
             if (containerStyle.position === 'static') {
               container.style.position = 'relative';
+            }
+            
+            // Remove the loading overlay if it exists
+            const existingOverlay = container.querySelector('.vance-loading-overlay');
+            if (existingOverlay) {
+              container.removeChild(existingOverlay);
             }
             
             // Remove all child nodes in the container
@@ -47,7 +133,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             vanceImg.style.objectFit = 'cover';
             container.appendChild(vanceImg);
             
-            // Add a MutationObserver to ensure only our Vance image stays in the container
+            // Add a MutationObserver to ensure only the swapped image stays in the container
             const observer = new MutationObserver((mutations) => {
               for (const mutation of mutations) {
                 if (mutation.type === 'childList') {
@@ -59,7 +145,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     });
                   }
                   
-                  // If our Vance image was removed, add it back
+                  // If the Vance image was removed, add it back
                   if (Array.from(container.children).indexOf(vanceImg) === -1) {
                     container.appendChild(vanceImg);
                   }
