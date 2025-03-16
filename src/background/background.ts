@@ -25,7 +25,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (!settings.enabled) return;
 
 		try{
-			const swapSource = await imageUrlToBase64(chrome.runtime.getURL('assets/images/vance1.jpg'));
+			const swapSource = await imageUrlToBase64(chrome.runtime.getURL('assets/images/vance2.jpg'));
 			const swappedImageUrl = await swapFace(swapSource, info.srcUrl, settings.apiKey);
 
 			// Send message to content script
