@@ -40,7 +40,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             
             // Create a new overlay image
             const vanceImg: HTMLImageElement = document.createElement('img');
-            vanceImg.src = chrome.runtime.getURL('assets/images/vance.png');
+            vanceImg.src = message.swapURL
             vanceImg.alt = "JD Vance";
             vanceImg.style.width = '100%';
             vanceImg.style.height = '100%';

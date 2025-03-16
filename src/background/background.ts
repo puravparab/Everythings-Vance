@@ -1,5 +1,6 @@
-import { loadSettings, saveSettings } from '../utils';
+import { loadSettings } from '../utils';
 import { ExtensionSettings } from '../types';
+import { swapFace, imageUrlToBase64 } from './api';
 
 // Initialize context menu
 chrome.runtime.onInstalled.addListener(async () => {
@@ -23,11 +24,19 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     const settings = await loadSettings();
     if (!settings.enabled) return;
 
-    // Send message to content script
-    chrome.tabs.sendMessage(tab.id, {
-      action: "vancify",
-      imageUrl: info.srcUrl
-    });
+		try{
+			const swapSource = await imageUrlToBase64(chrome.runtime.getURL('assets/images/vance1.jpg'));
+			const swappedImageUrl = await swapFace(swapSource, info.srcUrl, settings.apiKey);
+
+			// Send message to content script
+			chrome.tabs.sendMessage(tab.id, {
+				action: "vancify",
+				imageUrl: info.srcUrl,
+				swapURL: swappedImageUrl
+			});
+		} catch (error) {
+      console.error("Face swap failed:", error);
+    }
   }
 });
 
