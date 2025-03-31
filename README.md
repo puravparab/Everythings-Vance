@@ -2,6 +2,8 @@
 
 Everythings Vance is a browser extension that swaps the face of VP Vance onto any image.
 
+https://github.com/user-attachments/assets/2825d1c3-59b5-4820-ae2a-e9c75a5bdc91
+
 ## Requirements
 
 - [Replicate API Key](https://replicate.com/account/api-tokens) - Required for the face-swapping
